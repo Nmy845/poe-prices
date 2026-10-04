@@ -14,7 +14,7 @@ const DATA_URL = qs.get('demo') ? 'data/demo.json' : 'data/data.json';
 const LS = (k, v) => { try { if (v === undefined) return localStorage.getItem('poe.' + k); localStorage.setItem('poe.' + k, v); } catch (e) { return null; } };
 
 const S = {
-  data: null, items: [], cur: LS('cur') || 'div',
+  data: null, items: [], cur: LS('cur') === 'ex' ? 'ex' : 'div',
   range: { preset: LS('preset') || '7d', from: null, to: null },
   sort: { k: 'idx', dir: 1 }, filter: '', item: null,
   show: JSON.parse(LS('show') || '{"min":true,"avg":true,"med":false,"ma1":true,"ma2":false}'),
@@ -38,7 +38,7 @@ const now = () => Date.now() / 1000;
 const ago = t => t == null ? '—' : (now() - t < 60 ? 'только что' : dur(now() - t) + ' назад');
 const NF = {}; const nf = (d) => NF[d] || (NF[d] = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: d }));
 function fnum(v, dec) { if (v == null || !isFinite(v)) return '—'; if (dec == null) dec = Math.abs(v) >= 100 ? 1 : Math.abs(v) >= 10 ? 2 : Math.abs(v) >= 1 ? 2 : 3; return nf(dec).format(v); }
-const curLbl = () => S.cur === 'div' ? 'div' : 'c';
+const curLbl = () => S.cur === 'div' ? 'div' : 'ex';
 function conv(vDiv, cpd) { if (vDiv == null) return null; return S.cur === 'div' ? vDiv : vDiv * (cpd || lastRate()); }
 function money(vDiv, cpd) { const v = conv(vDiv, cpd); if (v == null) return '—'; return fnum(v, S.cur === 'div' ? null : 0) + ' ' + curLbl(); }
 function pctTxt(p, dec = 1) { if (p == null || !isFinite(p)) return '—'; const s = p > 0 ? '+' : p < 0 ? '−' : ''; return s + nf(dec).format(Math.abs(p)) + '%'; }
@@ -49,6 +49,7 @@ const median = a => { if (!a.length) return null; const b = [...a].sort((x, y) =
 function std(a) { if (a.length < 2) return null; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); }
 function plural(n, a, b, c) { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; }
 function lastRate() { const r = S.data && S.data.rates; return r && r.length ? r[r.length - 1][1] : null; }
+function lastChaosRate() { const r = S.data && S.data.rates_chaos; return r && r.length ? r[r.length - 1][1] : null; }
 function curName(c) { return ({ divine: 'div', chaos: 'c', exalted: 'ex', mirror: 'mirror' }[c]) || c; }
 
 /* ---------- аналитика ---------- */
@@ -311,7 +312,7 @@ function renderStatus() {
   const d = S.data; if (!d) return; const lr = d.last_run, nr = nextRun(now()), late = lr && now() - lr > 3 * H + 40 * 60;
   $('#status').innerHTML = `<div class="st"><b><i class="dot ${late ? 'late' : ''}"></i>Обновлено: ${fmtDT(lr)} МСК</b><span>${ago(lr)}${late ? ' · обновление задерживается' : ''}</span></div>
     <div class="st"><b>Следующий сбор: ${fmtDT(nr)} МСК</b><span>через ${dur(nr - now())} · сайт обновится через пару минут после</span></div>
-    <div class="st rate"><b>1 div = ${fnum(lastRate(), 0)} c</b><span>курс poe.ninja</span></div>`;
+    <div class="st rate"><b>1 div = ${fnum(lastRate(), 0)} ex</b><span>${lastChaosRate() ? '= ' + fnum(lastChaosRate(), 1) + ' c · ' : ''}курс poe.ninja</span></div>`;
 }
 
 /* ---------- views ---------- */
@@ -336,11 +337,11 @@ function viewOverview(root) {
   const rates = (S.data.rates || []).map(r => ({ t: r[0], min: r[1] })); const rch = change(rates, D);
   const totalVol = S.items.reduce((s, i) => s + ((i.a.last && i.a.last.vol) || 0), 0);
   const firstT = allPts.length ? Math.min(...allPts.map(p => p.t)) : null;
-  const cols = [['name', 'Предмет'], ['min', 'Мин.'], ['avg', 'Ср. топ-10'], ['med', 'Медиана'], ['chaos', 'Мин. в chaos'], ['vol', 'Лотов'], ['ch3', 'Δ 3ч'], ['ch24', 'Δ 24ч'], ['ch7', 'Δ 7д'], ['ch30', 'Δ 30д'], [null, 'Мин. за 7д'], ['pos', 'Мин/макс 7д'], ['volat', 'Волатильность'], [null, 'Сигнал'], [null, '']];
+  const cols = [['name', 'Предмет'], ['min', 'Мин.'], ['avg', 'Ср. топ-10'], ['med', 'Медиана'], ['chaos', 'Мин. в ex'], ['vol', 'Лотов'], ['ch3', 'Δ 3ч'], ['ch24', 'Δ 24ч'], ['ch7', 'Δ 7д'], ['ch30', 'Δ 30д'], [null, 'Мин. за 7д'], ['pos', 'Мин/макс 7д'], ['volat', 'Волатильность'], [null, 'Сигнал'], [null, '']];
   const th = cols.map(([k2, l]) => k2 ? `<th data-k="${k2}">${l}${S.sort.k === k2 ? ` <span class="ar">${S.sort.dir > 0 ? '▲' : '▼'}</span>` : ''}</th>` : `<th class="nos">${l}</th>`).join('');
   const tr = list.map(r => { const a = r.a, L = r.L; if (!a.last) return `<tr data-i="${esc(r.name)}"><td class="l"><div class="iname">${esc(r.name)}</div></td><td colspan="14" class="muted" style="text-align:left">ещё нет данных</td></tr>`;
     return `<tr data-i="${esc(r.name)}"><td class="l"><div class="iname">${esc(r.name)}</div><div class="itype">${esc(r.it.type || '')}</div></td>
-    <td><b>${money(L.min, L.cpd)}</b></td><td>${money(L.avg, L.cpd)}</td><td>${money(L.med, L.cpd)}</td><td>${fnum(r.chaos, 0)} c</td>
+    <td><b>${money(L.min, L.cpd)}</b></td><td>${money(L.avg, L.cpd)}</td><td>${money(L.med, L.cpd)}</td><td>${fnum(r.chaos, 0)} ex</td>
     <td>${fnum(L.vol, 0)}${a.vch['24h'] != null ? `<div class="${dirCls(a.vch['24h'], 2)}" style="font-size:11px">${pctTxt(a.vch['24h'])} 24ч</div>` : ''}</td>
     <td>${chip(r.ch3)}</td><td>${chip(r.ch24)}</td><td>${chip(r.ch7)}</td><td>${chip(r.ch30)}</td>
     <td>${sparkSvg(lastN(r.it.rs, 7 * D).map(p => conv(p.min, p.cpd)))}</td><td>${rangeCell(a)}</td><td>${volatTxt(a.vol)}</td><td>${badgeHtml({ ...a.badge, sub: '' })}</td><td>${tradeBtn(r.it, true, true)}</td></tr>`; }).join('');
@@ -352,14 +353,14 @@ function viewOverview(root) {
   const top = S.items.flatMap(i => (i.a.signals || []).filter(s => s.conf != null && s.conf >= .45 && s.cls !== 'na').map(s => ({ ...s, item: i.name }))).sort((a, b) => b.conf - a.conf).slice(0, 6);
   root.innerHTML = `
   <div class="kpis">
-    <div class="kpi"><div class="l">Курс chaos / div</div><div class="v">${fnum(lastRate(), 1)}</div><div class="s">${rch != null ? chip(rch) + ' за 24ч' : 'Δ24ч — мало данных'}</div></div>
+    <div class="kpi"><div class="l">Курс ex / div</div><div class="v">${fnum(lastRate(), 1)}</div><div class="s">${rch != null ? chip(rch) + ' за 24ч' : 'Δ24ч — мало данных'}</div></div>
     <div class="kpi"><div class="l">Предметов в трекинге</div><div class="v">${S.items.length}</div><div class="s">${fnum(totalVol, 0)} лотов на рынке всего</div></div>
     <div class="kpi"><div class="l">История</div><div class="v">${dur(span)}</div><div class="s">${firstT ? 'с ' + fmtDT(firstT) : '—'} · ${(n => n + ' ' + plural(n, 'замер', 'замера', 'замеров'))(Math.max(0, ...S.items.map(i => i.rs.length)))}</div></div>
     <div class="kpi"><div class="l">Самый активный рост 24ч</div><div class="v">${(() => { const b = rows.filter(r => r.ch24 != null).sort((a, b) => b.ch24 - a.ch24)[0]; return b ? `<span class="${dirCls(b.ch24)}">${pctTxt(b.ch24)}</span>` : '<span class="na">—</span>'; })()}</div><div class="s">${(() => { const b = rows.filter(r => r.ch24 != null).sort((a, b) => b.ch24 - a.ch24)[0]; return b ? esc(b.name) : 'нужно ≥ 24 ч истории'; })()}</div></div>
   </div>
   ${dataProgress(span)}
   <div class="panel" style="margin-top:14px">
-    <h2>Цены сейчас <span class="hint">клик по строке — подробный график · цены в ${S.cur === 'div' ? 'Divine' : 'Chaos'} · Δ — изменение мин. цены</span><span style="flex:1"></span><input class="search" id="flt" placeholder="🔍 Поиск предмета" value="${esc(S.filter)}"></h2>
+    <h2>Цены сейчас <span class="hint">клик по строке — подробный график · цены в ${S.cur === 'div' ? 'Divine' : 'Exalted'} · Δ — изменение мин. цены</span><span style="flex:1"></span><input class="search" id="flt" placeholder="🔍 Поиск предмета" value="${esc(S.filter)}"></h2>
     <div class="tbl-wrap tbl-overview"><table class="t"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>
     <div class="cards">${cards}</div>
   </div>
@@ -410,7 +411,7 @@ function viewItem(root, name) {
   root.innerHTML = `${pills}
   <div class="ihead"><div><h1>${esc(it.name)}</h1><div class="muted">${esc(it.type || '')} · ${esc(S.data.league)} · данные на ${fmtDT(L.t)} МСК</div>
      <div class="chips">${['3h', '24h', '7d', '30d'].map(k => `<span class="muted" style="font-size:12px;align-self:center">${{ '3h': '3ч', '24h': '24ч', '7d': '7д', '30d': '30д' }[k]}</span>${chip(a.ch[k])}`).join(' ')}</div></div>
-    <div style="text-align:right"><div class="big">${money(L.min, L.cpd)}</div><div class="muted">${S.cur === 'div' ? fnum(L.min * L.cpd, 0) + ' c' : fnum(L.min) + ' div'} · ср.10 ${money(L.avg, L.cpd)} · медиана ${money(L.med, L.cpd)}</div>
+    <div style="text-align:right"><div class="big">${money(L.min, L.cpd)}</div><div class="muted">${S.cur === 'div' ? fnum(L.min * L.cpd, 0) + ' ex' : fnum(L.min) + ' div'} · ср.10 ${money(L.avg, L.cpd)} · медиана ${money(L.med, L.cpd)}</div>
      <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center">${badgeHtml(a.badge)} ${tradeBtn(it)}</div></div></div>
   <div class="kpis">
     <div class="kpi"><div class="l">Лотов на рынке</div><div class="v">${fnum(L.vol, 0)}</div><div class="s">${a.vch['24h'] != null ? chip(a.vch['24h']) + ' за 24ч' : 'Δ24ч — мало данных'}</div></div>
@@ -444,7 +445,7 @@ function bindPills(root) { $$('.pill[data-n]', root).forEach(b => b.onclick = ()
 function listingsTable(it) {
   const l = it.l || []; if (!l.length) return ph('Нет лотов', '');
   const min = l[0][2]; const ref = it.lt || now();
-  return `<div class="tbl-wrap"><table class="t"><thead><tr><th class="nos">#</th><th class="nos">Цена</th><th class="nos">≈ div</th><th class="nos">≈ chaos</th><th class="nos">к мин.</th><th class="nos" style="text-align:left">Продавец</th><th class="nos">Выставлен (МСК)</th><th class="nos">Висит</th><th class="nos"></th></tr></thead><tbody>
+  return `<div class="tbl-wrap"><table class="t"><thead><tr><th class="nos">#</th><th class="nos">Цена</th><th class="nos">≈ div</th><th class="nos">≈ ex</th><th class="nos">к мин.</th><th class="nos" style="text-align:left">Продавец</th><th class="nos">Выставлен (МСК)</th><th class="nos">Висит</th><th class="nos"></th></tr></thead><tbody>
   ${l.map((x, i) => { const age = x[3] ? ref - x[3] : null; const cpd = it.a.last.cpd; return `<tr style="cursor:default"><td class="l">${i + 1}</td><td><b>${fnum(x[0])} ${esc(curName(x[1]))}</b></td><td>${fnum(x[2])}</td><td>${fnum(x[2] * cpd, 0)}</td>
   <td class="${i && x[2] > min * 1.0001 ? 'muted' : ''}">${i ? pctTxt((x[2] / min - 1) * 100) : '—'}</td><td class="l">${esc(x[4])}</td><td>${fmtDT(x[3])}</td>
   <td class="${age != null && age < D ? 'up' : age != null && age > 7 * D ? 'muted' : ''}">${age != null ? dur(age) : '—'}</td><td>${it.link ? `<a href="${esc(it.link)}" target="_blank" rel="noopener">трейд ↗</a>` : ''}</td></tr>`; }).join('')}
@@ -599,7 +600,7 @@ function load(silent) {
   return fetch(DATA_URL + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(d => {
     if (silent && S.data && d.last_run === S.data.last_run) return;
     S.data = d; S.items = d.items.map((it, i) => { const x = prep(it); x.idx = i; x.a = analyze(x); return x; });
-    $('#sub').textContent = `${d.league} · без коррапта · моментальный выкуп`;
+    $('#sub').textContent = `PoE 2 · ${d.league} · без коррапта · моментальный выкуп`;
     $('#demoBanner').hidden = !d.demo;
     render();
   }).catch(e => { if (!silent) $('#view').innerHTML = ph('Не удалось загрузить данные', esc(e.message) + ' — файл ' + DATA_URL); });

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PoE Трейд-трекер · цены Standard</title>
+<meta name="description" content="Трекинг цен Path of Exile (Standard): графики, сигналы, лучшие моменты для покупки и продажи">
+<meta name="theme-color" content="#0b0d10">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l12 14-12 14L4 16z' fill='%23d4a94a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/vendor/flatpickr.min.css">
+<link rel="stylesheet" href="assets/vendor/flatpickr-dark.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#/overview">
+    <span class="logo" aria-hidden="true"></span>
+    <span><span class="title">PoE Трейд-трекер</span><span class="sub" id="sub">Standard · без коррапта · моментальный выкуп</span></span>
+  </a>
+  <div class="status" id="status"></div>
+  <div class="hdr-ctl">
+    <div class="seg" id="curSeg" title="Валюта отображения">
+      <button data-cur="div">div</button><button data-cur="chaos">chaos</button>
+    </div>
+  </div>
+</header>
+<nav class="tabs" id="tabs">
+  <a href="#/overview" data-v="overview">Обзор</a>
+  <a href="#/signals" data-v="signals">Сигналы и советы</a>
+  <a href="#/item" data-v="item">Предмет</a>
+  <a href="#/compare" data-v="compare">Сравнение</a>
+  <a href="#/movers" data-v="movers">Лидеры роста/падения</a>
+</nav>
+<div id="demoBanner" class="demo-banner" hidden>ДЕМО-режим: синтетические данные для предпросмотра графиков. <a href="./">Вернуться к реальным</a></div>
+<main id="view"><div class="loading">Загрузка данных…</div></main>
+<footer class="foot">
+  <div>Данные: pathofexile.com/trade (топ-10 самых дешёвых лотов с моментальным выкупом) · курс chaos/div: poe.ninja · все время — МСК</div>
+  <div class="muted">Не финансовый совет. Просто цифры и пара простых правил — решай сам 🙂</div>
+</footer>
+<script src="assets/vendor/echarts.min.js"></script>
+<script src="assets/vendor/flatpickr.min.js"></script>
+<script src="assets/vendor/flatpickr-ru.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

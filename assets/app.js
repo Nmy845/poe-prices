@@ -677,14 +677,20 @@ function renderPicker() {
   add.onclick = () => { const y = S.pk.sel; if (!y || tracked(y.n, y.t)) return; window.open(issueUrl('add', y.n, y.t), '_blank', 'noopener'); };
   renderQueue();
 }
-function renderQueue(force) {
+function renderQueue() {   // очередь запросов: только по клику (анонимный GitHub API — 60 запросов/час на IP)
   const el = $('#pkQueue'); if (!el) return;
-  const draw = () => { const q = S.queue || []; el.innerHTML = q.length ? `<b>В очереди на обработку:</b> ${q.map(i => `<a href="${esc(i.html_url)}" target="_blank" rel="noopener">#${i.number} ${esc(i.title)}</a> <span class="muted">(${ago(Date.parse(i.created_at) / 1000)})</span>`).join(' · ')}` : ''; };
-  draw();
-  if (!force && S.queueT && Date.now() - S.queueT < 60000) return;
-  S.queueT = Date.now();
-  fetch(`https://api.github.com/repos/${repoName()}/issues?labels=track-request&state=open&per_page=20`, { headers: { Accept: 'application/vnd.github+json' } })
-    .then(r => r.ok ? r.json() : []).then(a => { S.queue = Array.isArray(a) ? a.filter(i => !i.pull_request) : []; draw(); }).catch(() => {});
+  const all = `https://github.com/${repoName()}/issues?q=is%3Aissue+label%3Atrack-request`;
+  const q = S.queue;
+  el.innerHTML = `<a href="${all}" target="_blank" rel="noopener">Все запросы на GitHub ↗</a> · <button class="btn ghost sm" id="pkQ">${S.queueBusy ? 'проверяю…' : 'Проверить очередь'}</button>
+    ${q === undefined ? '' : q === null ? ' <span class="muted">GitHub API сейчас недоступен (лимит анонимных запросов) — откройте список по ссылке</span>'
+      : q.length ? ` <b>В очереди:</b> ${q.map(i => `<a href="${esc(i.html_url)}" target="_blank" rel="noopener">#${i.number} ${esc(i.title)}</a> <span class="muted">(${ago(Date.parse(i.created_at) / 1000)})</span>`).join(' · ')}`
+      : ' <span class="muted">очередь пуста — все запросы обработаны</span>'}`;
+  $('#pkQ', el).onclick = () => {
+    if (S.queueBusy) return; S.queueBusy = true; renderQueue();
+    fetch(`https://api.github.com/repos/${repoName()}/issues?labels=track-request&state=open&per_page=20`, { headers: { Accept: 'application/vnd.github+json' } })
+      .then(r => r.ok ? r.json() : null).then(a => { S.queue = Array.isArray(a) ? a.filter(i => !i.pull_request) : null; })
+      .catch(() => { S.queue = null; }).finally(() => { S.queueBusy = false; renderQueue(); });
+  };
 }
 function bindRemove(root) {
   $$('[data-rm]', root).forEach(b => b.onclick = e => {

@@ -617,7 +617,8 @@ function pickerMatches(q) {
   const res = [];
   for (const x of S.cat.items) {
     if (!toks.every(t => x._s.includes(t))) continue;
-    const q0 = toks.join(' '); const sc = x._n.startsWith(q0) ? 0 : x._n.includes(q0) ? 1 : x._n.split(/\s+/).some(w => w.startsWith(toks[0])) ? 2 : 3;
+    const q0 = toks.join(' '), nw = x._n.split(/[\s'-]+/), ow = x._s.split(/[\s'-]+/);
+    const sc = x._n.startsWith(q0) ? 0 : toks.every(t => nw.some(w => w.startsWith(t))) ? 1 : toks.every(t => ow.some(w => w.startsWith(t))) ? 2 : x._n.includes(q0) ? 3 : 4;
     res.push([sc, -(x.l || 0), x]);
   }
   res.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
